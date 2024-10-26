@@ -1,0 +1,53 @@
+#Calificacion Proyecto 1
+#2S 2024
+#Cambiar "ponche" -> por el usuario de su distribución de linux
+#Cambiar “39” -> por los ultimos dos digitos de su carnet
+
+
+
+# 50M A
+Mkdisk -size=50 -unit=M -fit=FF -path=/home/ponche/Calificacion_MIA/Discos/Disco1.mia
+
+#-----------------3. FDISK-----------------
+#-----------------CREACION DE PARTICIONES-----------------
+#DISCO 1
+# PRIMARIA 10M
+fdisk -type=P -unit=b -name=Part11 -size=10485760 -path=/home/ponche/Calificacion_MIA/Discos/Disco1.mia -fit=BF
+
+
+
+#-----------------MOUNT-----------------
+#-----------------MONTAR PARTICIONES-----------------
+#DISCO 1
+#391A -> 39 sus ultimos dos digitos del carnet
+mount -path=/home/ponche/Calificacion_MIA/Discos/Disco1.mia -name=Part11
+
+
+
+#-----------------5. MKFS-----------------
+mkfs -type=full -id=391A
+
+
+#-----------------PARTE 3-----------------
+
+
+#-----------------7. LOGIN-----------------
+login -user=root -pass=123 -id=391A
+
+
+
+#-----------------15. #mkdir-----------------
+mkdir -path=/bin
+mkdir -path="/home/archivos/archivos 24" -p
+mkdir -p -path=/home/archivos/user/docs/usac
+mkdir -p -path=/home/archivos/carpeta1/carpeta2/carpeta3/carpeta4/carpeta5
+
+
+
+#------------------------REPORTES PARTE 4----------------
+rep -id=391A -path=/home/ponche/Calificacion_MIA/Reportes/p4_r1_inode.jpg" -name=inode
+rep -id=391A -path=/home/ponche/Calificacion_MIA/Reportes/p4_r2_block.jpg" -name=block
+
+
+#------------------------8. LOGOUT------------------------
+logout
