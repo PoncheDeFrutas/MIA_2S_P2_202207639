@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore.ts";
+import {POST} from "../services/API.ts";
 
 const Login: React.FC = () => {
     const [partitionId, setPartitionId] = useState("");
@@ -24,9 +25,28 @@ const Login: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        // TODO Make an API call to login
-        login();
-        navigate("/");
+
+        try {
+            const response = await POST<
+                { partitionId: string, username: string, password: string },
+                { result: boolean }
+            >   ('login', { partitionId, username, password });
+            if (!response.result) {
+                throw new Error("Invalid credentials");
+            }
+            handleLogin(response.result);
+        } catch (e) {
+            alert(`Error: ${e}`);
+        }
+    };
+
+    const handleLogin = (success: boolean) => {
+        if (success) {
+            login();
+            navigate("/");
+        } else {
+            alert("Invalid credentials");
+        }
     };
 
     return (

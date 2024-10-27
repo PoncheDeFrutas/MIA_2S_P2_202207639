@@ -33,10 +33,10 @@ export default function Terminal() {
         try {
             const response = await POST<
                 { content: string },
-                { Result: string }
-            >   ('http://localhost:5000/execute', { content: inputText }
+                { result: string }
+            >   ('execute', { content: inputText }
             );
-            setOutputText(response.Result);
+            setOutputText(response.result);
         } catch (e) {
             setOutputText(`Error: ${e}`);
         }
@@ -105,5 +105,4 @@ export default function Terminal() {
             </div>
         </div>
     );
-
 }

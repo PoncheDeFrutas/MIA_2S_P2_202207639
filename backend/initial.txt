@@ -6,13 +6,14 @@
 
 
 # 50M A
-Mkdisk -size=50 -unit=M -fit=FF -path=/home/ponche/Calificacion_MIA/Discos/Disco1.mia
+Mkdisk -size=70 -unit=M -fit=FF -path=/home/ponche/Calificacion_MIA/Discos/Disco1.mia
 
 #-----------------3. FDISK-----------------
 #-----------------CREACION DE PARTICIONES-----------------
 #DISCO 1
 # PRIMARIA 10M
-fdisk -type=P -unit=b -name=Part11 -size=10485760 -path=/home/ponche/Calificacion_MIA/Discos/Disco1.mia -fit=BF
+fdisk -type=P -unit=mb -name=Part11 -size=10 -path=/home/ponche/Calificacion_MIA/Discos/Disco1.mia -fit=BF
+fdisk -type=P -unit=mb -name=Part12 -size=10 -path=/home/ponche/Calificacion_MIA/Discos/Disco1.mia -fit=BF
 
 
 
@@ -21,11 +22,12 @@ fdisk -type=P -unit=b -name=Part11 -size=10485760 -path=/home/ponche/Calificacio
 #DISCO 1
 #391A -> 39 sus ultimos dos digitos del carnet
 mount -path=/home/ponche/Calificacion_MIA/Discos/Disco1.mia -name=Part11
-
+mount -path=/home/ponche/Calificacion_MIA/Discos/Disco1.mia -name=Part12
 
 
 #-----------------5. MKFS-----------------
 mkfs -type=full -id=391A
+mkfs -type=full -id=392A
 
 
 #-----------------PARTE 3-----------------

@@ -46,6 +46,7 @@ func (p *Partition) IsEmpty() bool {
 func (p *Partition) MountPartition(correlative int, id string) error {
 	p.PartCorrelative = int32(correlative) + 1
 	copy(p.PartId[:], id)
+	p.PartStatus = '1'
 	return nil
 }
 

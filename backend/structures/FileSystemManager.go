@@ -571,3 +571,12 @@ func (sb *SuperBlock) finInodeInPointerBlock(path, part string, blockIndex, leve
 
 	return -1
 }
+
+func (sb *SuperBlock) GetInodeElements(path string, index int32, filePath []string) {
+	inode := &Inode{}
+	inodePath := int64(sb.SInodeStart + index*sb.SInodeSize)
+
+	if err := inode.ReadInode(path, inodePath); err != nil {
+		return
+	}
+}

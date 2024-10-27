@@ -1,5 +1,6 @@
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import {POST} from "../services/API.ts";
 
 function NavBar() {
     const location = useLocation();
@@ -7,10 +8,26 @@ function NavBar() {
     const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
     const logout = useAuthStore((state) => state.logout);
 
-    const handleLogout = () => {
-        logout();
-        navigate("/login");
+    const handleLogout = async () => {
+        try {
+            const response = await POST<
+                object,
+                { result: boolean }
+            >('logout', {});
+
+            if (!response.result) {
+                throw new Error("Failed to logout");
+            }
+
+            logout();
+
+            navigate("/login");
+
+        } catch (e) {
+            alert(`Error: ${e}`);
+        }
     }
+
 
     return (
         <div className="border-y-gray-600">

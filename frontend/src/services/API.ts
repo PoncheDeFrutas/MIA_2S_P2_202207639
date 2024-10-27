@@ -1,5 +1,5 @@
 export async function POST<T, R>(url: string, content: T): Promise<R> {
-    const response = await fetch(url, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/`+url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -15,7 +15,7 @@ export async function POST<T, R>(url: string, content: T): Promise<R> {
 }
 
 export async function GET<R>(url: string): Promise<R> {
-    const response = await fetch(url, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/`+url, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
