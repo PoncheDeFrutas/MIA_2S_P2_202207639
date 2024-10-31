@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+type FolderElement struct {
+	Name string `json:"name"`
+	ID   int32  `json:"id"`
+	Type string `json:"type"`
+}
+
 func (sb *SuperBlock) GetFile(path string, index int32, filePath []string) string {
 	inode := &Inode{}
 	inodePath := int64(sb.SInodeStart + index*sb.SInodeSize)
@@ -572,11 +578,99 @@ func (sb *SuperBlock) finInodeInPointerBlock(path, part string, blockIndex, leve
 	return -1
 }
 
-func (sb *SuperBlock) GetInodeElements(path string, index int32, filePath []string) {
+func (sb *SuperBlock) GetInodeElements(path string, index int32) ([]FolderElement, error) {
 	inode := &Inode{}
 	inodePath := int64(sb.SInodeStart + index*sb.SInodeSize)
 
 	if err := inode.ReadInode(path, inodePath); err != nil {
-		return
+		return nil, err
 	}
+
+	var allElements []FolderElement
+
+	if index != -1 {
+		for _, block := range inode.IBlock[:12] {
+			if block == -1 {
+				continue
+			}
+			elements, err := sb.GetFolderElements(path, block)
+			if err != nil {
+				continue
+			}
+
+			allElements = append(allElements, elements...)
+		}
+	}
+
+	return allElements, nil
+}
+
+func (sb *SuperBlock) GetFolderElements(path string, index int32) ([]FolderElement, error) {
+	block := &FolderBlock{}
+	blockPath := int64(sb.SBlockStart + index*sb.SBlockSize)
+
+	if err := block.ReadFolderBlock(path, blockPath); err != nil {
+		return nil, err
+	}
+
+	inode := &Inode{}
+	var elements []FolderElement
+
+	for _, entry := range block.BContent[2:] {
+		if entry.BInode == -1 {
+			continue
+		}
+		inodePath := int64(sb.SInodeStart + entry.BInode*sb.SInodeSize)
+		if err := inode.ReadInode(path, inodePath); err != nil {
+			continue
+		}
+
+		element := FolderElement{
+			Name: strings.TrimRight(string(entry.BName[:]), "\x00"),
+			ID:   entry.BInode,
+			Type: func() string {
+				if inode.IType == '1' {
+					return "file"
+				}
+				return "folder"
+			}(),
+		}
+
+		elements = append(elements, element)
+	}
+
+	return elements, nil
+}
+
+func (sb *SuperBlock) GetInodeReference(path string, index int32, filePath []string) int32 {
+	if len(filePath) == 0 {
+		return index
+	}
+
+	inode := &Inode{}
+	inodePath := int64(sb.SInodeStart + index*sb.SInodeSize)
+
+	if err := inode.ReadInode(path, inodePath); err != nil {
+		return -1
+	}
+
+	if len(filePath) == 1 {
+		for _, block := range inode.IBlock[:12] {
+			if block == -1 {
+				break
+			}
+			newIndexInode := sb.GetIndexInode(path, filePath[0], block)
+			if newIndexInode != -1 {
+				return newIndexInode
+			}
+		}
+	}
+
+	newIndexInode := sb.findInodeInBlock(path, filePath[0], inode)
+
+	if newIndexInode != -1 {
+		return sb.GetInodeReference(path, newIndexInode, filePath[1:])
+	}
+
+	return -1
 }

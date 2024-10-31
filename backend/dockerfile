@@ -1,0 +1,39 @@
+# Etapa 1: Construcción del binario con Alpine
+FROM golang:1.22-alpine AS build
+
+# Instalar dependencias necesarias para CGo
+RUN apk add --no-cache gcc musl-dev
+
+# Crear directorio de trabajo
+WORKDIR /app
+
+# Copiar archivos de dependencias
+COPY go.mod go.sum ./
+
+# Descargar las dependencias
+RUN go mod download
+
+# Copiar todo el código de la aplicación
+COPY . .
+
+# Compilar la aplicación con CGo habilitado
+RUN CGO_ENABLED=1 GOOS=linux go build -o app .
+
+# Etapa 2: Imagen ligera para ejecutar el binario
+FROM alpine:latest
+
+# Instalar certificados necesarios y compatibilidad con libc
+RUN apk add --no-cache ca-certificates libc6-compat
+
+# Crear un directorio de trabajo
+WORKDIR /root/
+
+# Copiar el binario desde la etapa de construcción
+COPY --from=build /app/app .
+
+# Exponer el puerto en el que la aplicación escucha
+EXPOSE 5000
+
+# Comando para ejecutar la aplicación
+CMD ["./app"]
+

@@ -5,8 +5,8 @@ import (
 	"backend/commands"
 	"backend/global"
 	"backend/structures"
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"net/http"
 	"strings"
 )
@@ -16,6 +16,14 @@ type ExecuteRequest struct {
 }
 
 type ExecuteResponse struct {
+	Result string `json:"result"`
+}
+
+type FolderResponse struct {
+	Result []structures.FolderElement `json:"result"`
+}
+
+type FileResponse struct {
 	Result string `json:"result"`
 }
 
@@ -38,59 +46,55 @@ type PartitionsListResponse struct {
 }
 
 func main() {
+	app := fiber.New()
 
-	r := gin.Default()
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+		AllowHeaders: "Origin, Content-Type, Accept",
+	}))
 
-	r.Use(cors.Default())
-
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
 			"message": "Hello World!",
 		})
 	})
 
-	r.POST("/execute", func(c *gin.Context) {
+	app.Post("/execute", func(c *fiber.Ctx) error {
 		var req ExecuteRequest
-		if err := c.BindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
 
 		result := processContent(req.Content)
-
-		c.JSON(http.StatusOK, ExecuteResponse{
+		return c.JSON(ExecuteResponse{
 			Result: result,
 		})
 	})
 
-	r.POST("/login", func(c *gin.Context) {
+	app.Post("/login", func(c *fiber.Ctx) error {
 		var req LoginRequest
-		if err := c.BindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
 
 		result := login(req.PartitionId, req.Username, req.Password)
-
-		c.JSON(http.StatusOK, LoginResponse{
+		return c.JSON(LoginResponse{
 			Result: result,
 		})
 	})
 
-	r.POST("/logout", func(c *gin.Context) {
+	app.Post("/logout", func(c *fiber.Ctx) error {
 		_, err := commands.ParserLogout([]string{})
-
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
+			return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
 
-		c.JSON(http.StatusOK, gin.H{
+		return c.JSON(fiber.Map{
 			"result": true,
 		})
 	})
 
-	r.GET("/disks", func(c *gin.Context) {
+	app.Get("/disks", func(c *fiber.Ctx) error {
 		var partitions []map[string]string
 		pathSet := make(map[string]bool)
 
@@ -100,7 +104,6 @@ func main() {
 			}
 
 			pathSet[path] = true
-
 			parts := strings.Split(path, "/")
 			name := parts[len(parts)-1]
 
@@ -110,21 +113,44 @@ func main() {
 			})
 		}
 
-		c.JSON(http.StatusOK, DiskListResponse{
+		return c.JSON(DiskListResponse{
 			Result: partitions,
 		})
 	})
 
-	r.GET("/partitions/:diskId", func(c *gin.Context) {
-		partitions := getPartitionsListDisk(c.Param("diskId"))
+	app.Get("/partitions/:diskId", func(c *fiber.Ctx) error {
+		partitions := getPartitionsListDisk(c.Params("diskId"))
 
-		c.JSON(http.StatusOK, PartitionsListResponse{
+		return c.JSON(PartitionsListResponse{
 			Result: partitions,
 		})
 	})
 
-	err := r.Run(":5000")
+	app.Get("/filesystem/:partitionId", func(c *fiber.Ctx) error {
+		isFile := c.Query("type") == "file"
 
+		if isFile {
+			text, err := commands.ParserCat([]string{"-file1=" + c.Query("path")})
+			if err != nil {
+				return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+			}
+
+			return c.JSON(FileResponse{
+				Result: text,
+			})
+		}
+
+		data, err := getElementsInFolder(c.Params("partitionId"), c.Query("path"))
+		if err != nil {
+			return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		return c.JSON(FolderResponse{
+			Result: data,
+		})
+	})
+
+	err := app.Listen(":5000")
 	if err != nil {
 		return
 	}
@@ -172,4 +198,32 @@ func getPartitionsListDisk(diskId string) []map[string]string {
 	}
 
 	return partitions
+}
+
+func getElementsInFolder(partitionID, path string) ([]structures.FolderElement, error) {
+	mountedPartition, partitionPath, err := global.GetMountedPartition(partitionID)
+	if err != nil {
+		return nil, err
+	}
+
+	sb := &structures.SuperBlock{}
+	if err := sb.ReadSuperBlock(partitionPath, int64(mountedPartition.PartStart)); err != nil {
+		return nil, err
+	}
+
+	array := strings.Split(path, "/")
+	var result []string
+	for _, part := range array {
+		if part != "" {
+			result = append(result, part)
+		}
+	}
+
+	indexInode := sb.GetInodeReference(partitionPath, 0, result)
+	folderElement, err := sb.GetInodeElements(partitionPath, indexInode)
+	if err != nil {
+		return nil, err
+	}
+
+	return folderElement, nil
 }
